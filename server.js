@@ -6,7 +6,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware to parse incoming JSON payloads from the contact form
+// Middleware to parse incoming JSON payloads
 app.use(express.json());
 
 // Serve static assets from the 'public' directory
@@ -81,7 +81,7 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// Start server locally for development testing
+// Local listening wrapper
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 Server active on http://localhost:${PORT}`);
