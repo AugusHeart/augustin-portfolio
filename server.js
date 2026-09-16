@@ -81,7 +81,12 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// Start server locally (Vercel manages execution automatically in production)
-app.listen(PORT, () => {
-  console.log(`🚀 Server active on http://localhost:${PORT}`);
-});
+// Start server locally for development testing
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server active on http://localhost:${PORT}`);
+  });
+}
+
+// CRITICAL FOR VERCEL: Export the Express app as a serverless function handler
+module.exports = app;
