@@ -1,105 +1,87 @@
-require('dotenv').config();
 const express = require('express');
-const nodemailer = require('nodemailer');
-const cors = require('cors');
 const path = require('path');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// Middleware to parse incoming JSON payloads from the contact form
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Serve static assets from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configure Nodemailer with Direct Gmail Service & Strict Timeouts
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // Use SSL to avoid ISP port 587 filtering
-  auth: {
-    user: process.env.SMTP_USER || 'anandrajaugustin@gmail.com',
-    pass: (process.env.SMTP_PASS || '').replace(/\s+/g, ''), // Strip spaces automatically
-  },
-  connectionTimeout: 12000, // 12 seconds max before timing out
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
+// Explicit root route handler to serve the portfolio frontend
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Verification check on boot
-transporter.verify((error) => {
+// Configure Nodemailer Transporter using Gmail SMTP credentials from environment variables
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+// Verify SMTP connection configuration on startup
+transporter.verify((error, success) => {
   if (error) {
-    console.error('❌ [SMTP Auth Error]: Could not verify Gmail SMTP credentials.');
-    console.error('Reason:', error.message);
-    console.warn('👉 Verify that 2-Step Verification is ON and you are using a 16-character App Password (not your plain account password).');
+    console.error('❌ [SMTP Error]: Failed to connect to mail server:', error);
   } else {
     console.log('✅ [SMTP Ready]: Successfully authenticated with Gmail. Ready to send recruitment emails.');
   }
 });
 
-// Contact API Endpoint
+// Contact Form API Endpoint
 app.post('/api/contact', async (req, res) => {
   const { name, email, subject, message } = req.body;
 
+  // Validate incoming fields
   if (!name || !email || !message) {
     return res.status(400).json({ 
       success: false, 
-      message: 'Please fill in all mandatory fields before sending.' 
+      message: 'Please fill in all required fields (Name, Email, Message).' 
     });
   }
 
   const mailOptions = {
-    from: `"${name}" <${process.env.SMTP_USER || 'anandrajaugustin@gmail.com'}>`,
-    replyTo: email,
+    from: `"Academic Portfolio Desk" <${process.env.SMTP_USER}>`,
     to: process.env.RECEIVER_EMAIL || 'anandrajaugustin@gmail.com',
-    subject: `[Faculty Recruitment Inquiry] ${subject || 'Assistant Professor Position'} - ${name}`,
-    text: `Sender Name: ${name}\nOfficial Email: ${email}\nDesignation / Subject: ${subject}\n\nMessage:\n${message}`,
+    subject: `[Recruitment Inquiry] ${subject || 'Assistant Professor Opening'} - From ${name}`,
     html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; line-height: 1.6; color: #1e293b; background-color: #f8fafc;">
-        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <div style="background-color: #0284c7; padding: 22px 24px;">
-            <h2 style="color: #ffffff; margin: 0; font-size: 19px; font-weight: 700;">New Academic Recruitment Inquiry</h2>
-            <p style="color: #e0f2fe; margin: 4px 0 0; font-size: 13px;">Forwarded from Augustin Anandraj's Faculty Webpage</p>
-          </div>
-          <div style="padding: 24px;">
-            <p style="margin: 0 0 10px; font-size: 14px;"><strong>Interviewer / Institution:</strong> ${name}</p>
-            <p style="margin: 0 0 10px; font-size: 14px;"><strong>Official Email:</strong> <a href="mailto:${email}" style="color: #0284c7; text-decoration: underline;">${email}</a></p>
-            <p style="margin: 0 0 16px; font-size: 14px;"><strong>Subject Reference:</strong> ${subject || 'Assistant Professor CSE Interview'}</p>
-            <div style="background: #f1f5f9; padding: 16px; border-radius: 8px; border-left: 4px solid #0284c7; margin-bottom: 20px;">
-              <p style="margin: 0; white-space: pre-wrap; font-size: 14px; color: #334155;">${message}</p>
-            </div>
-            <div style="text-align: center; padding-top: 10px;">
-              <a href="mailto:${email}" style="background-color: #0284c7; color: #ffffff; padding: 11px 22px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block;">Reply Directly to Interviewer</a>
-            </div>
-          </div>
-        </div>
+      <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f8; border-radius: 10px;">
+        <h2 style="color: #0284c7;">New Interview / Hiring Inquiry Received</h2>
+        <p><strong>Interviewer / Institution:</strong> ${name}</p>
+        <p><strong>Official Email:</strong> ${email}</p>
+        <p><strong>Designation Reference:</strong> ${subject || 'N/A'}</p>
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
+        <p><strong>Message / Schedule Details:</strong></p>
+        <p style="background: #ffffff; padding: 15px; border-radius: 5px; border-left: 4px solid #0ea5e9;">${message}</p>
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
+        <p style="font-size: 11px; color: #666;">This message was transmitted securely via Augustin Anandraj's academic portfolio contact desk.</p>
       </div>
     `,
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`📨 [Email Sent Successfully] Message ID: ${info.messageId} to ${process.env.RECEIVER_EMAIL}`);
+    await transporter.sendMail(mailOptions);
     return res.status(200).json({ 
       success: true, 
-      message: 'Your message has been delivered successfully to Augustin Anandraj.' 
+      message: 'Email transmitted successfully!' 
     });
   } catch (error) {
-    console.error('❌ [Mail Dispatch Error]:', error.message);
+    console.error('Mail transmission error:', error);
     return res.status(500).json({ 
       success: false, 
-      message: 'Could not establish connection with mail server. Verify your Gmail App Password in .env.' 
+      message: 'Failed to send message. Verify SMTP credentials in Vercel environment variables.' 
     });
   }
 });
 
-// Express 5 compatible route
-app.get('/*splat', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
+// Start server locally (Vercel manages execution automatically in production)
 app.listen(PORT, () => {
   console.log(`🚀 Server active on http://localhost:${PORT}`);
 });
