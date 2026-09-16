@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware to parse incoming JSON payloads
 app.use(express.json());
 
-// Serve all static assets (HTML, PDF resume, images) from the 'public' directory
+// Serve all static assets (HTML, PDF resume, images) from the 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Explicit root route handler to serve the portfolio frontend
