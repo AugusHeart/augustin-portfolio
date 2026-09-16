@@ -17,9 +17,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Configure Nodemailer Transporter using Gmail SMTP credentials from environment variables
+// Configure Nodemailer Transporter using Gmail SMTP (Port 587 for Render compatibility)
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // false for port 587 (STARTTLS)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -76,17 +78,12 @@ app.post('/api/contact', async (req, res) => {
     console.error('Mail transmission error:', error);
     return res.status(500).json({ 
       success: false, 
-      message: 'Failed to send message. Verify SMTP credentials in Vercel environment variables.' 
+      message: 'Failed to send message. Verify SMTP credentials in Render environment variables.' 
     });
   }
 });
 
-// Local listening wrapper
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server active on http://localhost:${PORT}`);
-  });
-}
-
-// CRITICAL FOR VERCEL: Export the Express app as a serverless function handler
-module.exports = app;
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server active on port ${PORT}`);
+});
